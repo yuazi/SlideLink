@@ -133,7 +133,7 @@ def slugify(value: str, max_words: int = 6) -> str:
 
 
 def extract_lecture_number(path: Path) -> str | None:
-    match = re.match(r"^(\d{1,2})", path.stem)
+    match = re.search(r"(\d{1,2})", path.stem)
     if match:
         return match.group(1).zfill(2)
     return None
@@ -462,7 +462,7 @@ def find_matching_pdf(note_path: Path, pdf_dir: Path) -> Path | None:
         if root.exists():
             pdfs.extend(sorted(root.glob("*.pdf")))
     if lecture_number:
-        by_number = [pdf for pdf in pdfs if lecture_number in pdf.stem]
+        by_number = [pdf for pdf in pdfs if extract_lecture_number(pdf) == lecture_number]
         if len(by_number) == 1:
             return by_number[0]
         if len(by_number) > 1:
