@@ -17,8 +17,8 @@ This repository is "ready-to-go" with the default directory structure already cr
 Clone the repository and install the package in editable mode:
 
 ```bash
-git clone https://github.com/your-username/slidelink.git
-cd slidelink
+git clone https://github.com/yuazi/SlideLink.git
+cd SlideLink
 pip install -e .
 ```
 
@@ -36,7 +36,7 @@ Copy your files into the pre-created folders:
 Simply run the command from the root directory:
 
 ```bash
-slidelink
+slidelink-run
 ```
 
 The tool will analyze your notes, find the best matching slides, extract them as images into the `assets/` folder, and insert the links directly into your markdown files.
@@ -49,7 +49,7 @@ The tool will analyze your notes, find the best matching slides, extract them as
 | `--notes-dir` | `notes` | Directory containing markdown notes. |
 | `--pdf-dir` | `notes/pdfs` | Directory containing course slides (PDF). |
 | `--asset-dir` | `assets` | Target asset root for extracted images. |
-| `--min-score" | `0.33` | Minimum confidence score required for a match. |
+| `--min-score` | `0.33` | Minimum confidence score required for a match. |
 | `--subject-label` | `Lecture` | Prefix used for image filenames and logs. |
 | `--aliases-file` | None | Path to a JSON file mapping LaTeX commands to alias sets. |
 | `--headings-config` | None | Path to a JSON file with 'skip' and 'generic' heading lists. |
@@ -68,7 +68,7 @@ If you are in a STEM field, you can provide a JSON file mapping LaTeX commands t
 }
 ```
 
-Usage: `slidelink --aliases-file examples/aliases_stem.json`
+Usage: `slidelink-run --aliases-file examples/aliases_stem.json`
 
 ### Heading Configuration
 
@@ -81,7 +81,7 @@ Override which headings are skipped or treated as "generic" (requiring higher co
 }
 ```
 
-Usage: `slidelink --headings-config examples/headings_config.json`
+Usage: `slidelink-run --headings-config examples/headings_config.json`
 
 ## Contributing
 

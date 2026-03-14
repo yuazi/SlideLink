@@ -20,7 +20,7 @@ dev = [
 ]
 
 [project.scripts]
-slidelink = "slidelink.core:main"
+slidelink-run = "slidelink.core:main"
 
 [tool.setuptools.packages.find]
 include = ["slidelink*"]
