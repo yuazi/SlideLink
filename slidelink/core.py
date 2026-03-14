@@ -39,23 +39,19 @@ DEFAULT_SKIP_HEADINGS = {
 }
 
 DEFAULT_GENERIC_HEADINGS = {
-    "algorithm",
-    "algorithms",
-    "alignment models",
     "architecture",
     "challenges",
+    "conclusion",
+    "evaluation",
+    "examples",
     "key concepts",
     "key idea",
     "key properties",
-    "methods overview",
     "motivation",
+    "objectives",
     "outputs",
     "overview",
-    "papers",
-    "representation learning models",
     "results",
-    "techniques at a glance",
-    "training data",
     "what is it",
 }
 
@@ -194,17 +190,9 @@ def expand_math_aliases(math_terms: Iterable[str], aliases: dict[str, set[str]])
 
 def is_generic_heading(candidate: SectionCandidate, generic_headings: set[str]) -> bool:
     normalized = normalize_text(candidate.heading_text)
-    if normalized in generic_headings:
-        return True
-    # Very short headings tend to overfit slide titles without enough semantic support.
-    return len(normalized.split()) <= 2 and normalized in {
-        "architecture",
-        "motivation",
-        "results",
-        "outputs",
-        "overview",
-        "papers",
-    }
+    # If the heading text is in the generic set, it's generic.
+    # Short headings are also treated as generic for better scoring stability.
+    return normalized in generic_headings or len(normalized.split()) <= 2
 
 
 def parse_markdown_candidates(note_path: Path, skip_headings: set[str]) -> list[SectionCandidate]:
