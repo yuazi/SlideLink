@@ -28,7 +28,7 @@ NON_WORD_RE = re.compile(r"[^a-z0-9]+")
 
 DEFAULT_NOTES_DIR = Path("notes")
 DEFAULT_PDF_DIR = DEFAULT_NOTES_DIR / "pdfs"
-DEFAULT_ASSET_DIR = Path("assets")
+DEFAULT_ASSET_DIR = DEFAULT_NOTES_DIR / "screenshots"
 
 # Default values for SKIP_HEADINGS and GENERIC_HEADINGS
 DEFAULT_SKIP_HEADINGS = {
@@ -501,7 +501,10 @@ def insertion_snippet(
     for match in decision.matches:
         filename = image_filename(subject_label, lecture_number, match.slide.page_number, decision.candidate.concept_slug)
         image_paths.append(asset_folder / filename)
-        links.append(f"![[{filename}]]")
+        # Use standard markdown relative to notes folder (screenshots/ID/filename)
+        # Default asset_dir is notes/screenshots, so relative path is screenshots/ID/filename
+        rel_path = f"screenshots/{lecture_number}/{filename}"
+        links.append(f"![]({rel_path})")
 
     lines: list[str] = []
     if decision.review_needed and len(decision.matches) == 2:
@@ -563,6 +566,29 @@ def apply_insertions(
 
     note_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
     return (0, linked)
+
+
+def revert_note(note_path: Path, dry_run: bool) -> int:
+    if not note_path.exists():
+        return 0
+    content = note_path.read_text(encoding="utf-8")
+    original_len = len(content)
+    
+    # Remove review comments
+    content = re.sub(r"<!-- Review Needed: .*? -->\n?", "", content)
+    # Remove slidelink screenshots (matching standard markdown or wiki links to screenshots/ folder)
+    content = re.sub(r"!\[\[.*?\]\]\n?", "", content)
+    content = re.sub(r"!\[\]\(screenshots/.*?\)\n?", "", content)
+    
+    # Collapse triple newlines (often left by removals)
+    content = re.sub(r"\n{3,}", "\n\n", content)
+    
+    if len(content) == original_len:
+        return 0
+        
+    if not dry_run:
+        note_path.write_text(content, encoding="utf-8")
+    return 1
 
 
 def materialize_images(
@@ -710,6 +736,11 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Log proposed insertions and confidence scores without editing files.",
     )
+    parser.add_argument(
+        "--revert",
+        action="store_true",
+        help="Remove inserted slidelink screenshots and review comments from notes.",
+    )
     return parser
 
 
@@ -718,6 +749,21 @@ def main() -> int:
     args = parser.parse_args()
 
     require_runtime_dependencies()
+
+    notes = resolve_notes(args.note, args.notes_dir)
+    if not notes:
+        print("[skip] No lecture notes found to process.")
+        return 0
+
+    if args.revert:
+        reverted_count = 0
+        for note_path in notes:
+            if revert_note(note_path, args.dry_run):
+                reverted_count += 1
+                action = "would revert" if args.dry_run else "reverted"
+                print(f"[{action}] {note_path.name}")
+        print(f"[done] mode={'dry-run' if args.dry_run else 'write'} reverted={reverted_count}")
+        return 0
 
     aliases: dict[str, set[str]] = {}
     if args.aliases_file:
@@ -734,11 +780,6 @@ def main() -> int:
                 skip_headings = set(config["skip"])
             if "generic" in config:
                 generic_headings = set(config["generic"])
-
-    notes = resolve_notes(args.note, args.notes_dir)
-    if not notes:
-        print("[skip] No lecture notes found to process.")
-        return 0
 
     total_created = 0
     total_linked = 0

@@ -21,6 +21,7 @@ dev = [
 
 [project.scripts]
 slidelink-run = "slidelink.core:main"
+slidelink-revert = "slidelink.core:main"
 
 [tool.setuptools.packages.find]
 include = ["slidelink*"]

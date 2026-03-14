@@ -155,7 +155,7 @@ cython_debug/
 # Project-specific
 notes/*.md
 notes/pdfs/*.pdf
-assets/**/*
+notes/screenshots/**/*
 !notes/.gitkeep
 !notes/pdfs/.gitkeep
-!assets/.gitkeep
+!notes/screenshots/.gitkeep

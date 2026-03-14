@@ -39,7 +39,15 @@ Simply run the command from the root directory:
 slidelink-run
 ```
 
-The tool will analyze your notes, find the best matching slides, extract them as images into the `assets/` folder, and insert the links directly into your markdown files.
+The tool will analyze your notes, find the best matching slides, extract them as images into the `notes/screenshots/` folder, and insert standard Markdown links directly into your files.
+
+### 4. Revert Changes
+
+If you want to remove all inserted screenshots and review comments to start fresh, run:
+
+```bash
+slidelink-revert --revert
+```
 
 ## CLI Reference
 
@@ -48,12 +56,13 @@ The tool will analyze your notes, find the best matching slides, extract them as
 | `--note` | None | Single markdown note to process. |
 | `--notes-dir` | `notes` | Directory containing markdown notes. |
 | `--pdf-dir` | `notes/pdfs` | Directory containing course slides (PDF). |
-| `--asset-dir` | `assets` | Target asset root for extracted images. |
+| `--asset-dir` | `notes/screenshots` | Target asset root for extracted images. |
 | `--min-score` | `0.33` | Minimum confidence score required for a match. |
 | `--subject-label` | `Lecture` | Prefix used for image filenames and logs. |
 | `--aliases-file` | None | Path to a JSON file mapping LaTeX commands to alias sets. |
 | `--headings-config` | None | Path to a JSON file with 'skip' and 'generic' heading lists. |
 | `--dry-run` | False | Log proposed changes without editing files. |
+| `--revert` | False | Remove inserted slidelink screenshots and review comments. |
 
 ## Customizing for your subject
 
