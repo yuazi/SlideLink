@@ -1,0 +1,15 @@
+{
+    "\\nabla": ["nabla", "gradient", "grad", "∇"],
+    "\\theta": ["theta", "θ"],
+    "\\phi": ["phi", "ϕ", "φ"],
+    "\\mu": ["mu", "μ"],
+    "\\sigma": ["sigma", "σ", "sigmoid"],
+    "\\sum": ["sum", "∑", "sigma"],
+    "\\prod": ["prod", "product", "∏"],
+    "\\mathcal{L}": ["loss", "objective", "ℒ", "l"],
+    "\\mathcal{E}": ["error", "ℰ", "e"],
+    "\\alpha": ["alpha", "α"],
+    "\\beta": ["beta", "β"],
+    "\\lambda": ["lambda", "λ"],
+    "\\partial": ["partial", "∂"]
+}

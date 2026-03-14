@@ -1,0 +1,28 @@
+{
+    "skip": [
+        "introduction",
+        "summary",
+        "references",
+        "further reading"
+    ],
+    "generic": [
+        "algorithm",
+        "algorithms",
+        "alignment models",
+        "architecture",
+        "challenges",
+        "key concepts",
+        "key idea",
+        "key properties",
+        "methods overview",
+        "motivation",
+        "outputs",
+        "overview",
+        "papers",
+        "representation learning models",
+        "results",
+        "techniques at a glance",
+        "training data",
+        "what is it"
+    ]
+}

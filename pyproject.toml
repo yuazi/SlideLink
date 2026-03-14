@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "slidelink"
+version = "0.1.0"
+description = "Contextually align lecture notes with course slides using semantic similarity."
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+dependencies = [
+    "PyMuPDF",
+    "scikit-learn",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+]
+
+[project.scripts]
+slidelink = "slidelink.core:main"
+
+[tool.setuptools.packages.find]
+include = ["slidelink*"]
