@@ -1,16 +1,31 @@
+<div align="center">
+
 # SlideLink
 
-`SlideLink` is a domain-agnostic tool that contextually aligns markdown lecture notes with corresponding course slides (PDF) using TF-IDF semantic similarity and visual analysis.
+**Contextually align your markdown lecture notes with the right slides — automatically.**
+
+[![Python](https://img.shields.io/badge/python-3.8%2B-blue?logo=python&logoColor=white)](https://www.python.org/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![CI](https://github.com/yuazi/SlideLink/actions/workflows/ci.yml/badge.svg)](https://github.com/yuazi/SlideLink/actions)
+
+</div>
+
+---
+
+`SlideLink` is a domain-agnostic CLI tool that scans your markdown lecture notes and inserts the most relevant slide images directly into them. It uses **TF-IDF semantic similarity** and **visual analysis** to match note sections to PDF slides — no LLM required, no internet needed.
 
 ## Why use this?
 
-*   **Medicine:** Automatically link dense clinical notes to anatomical diagrams and radiographic images from lecture slides.
-*   **Psychology:** Match case study discussions in your notes to the relevant experimental data visualizations in the course presentation.
-*   **STEM:** Bridge the gap between LaTeX-heavy derivations in your notes and the step-by-step algorithmic visualizations in course slides.
+| Field | Use Case |
+|-------|----------|
+| **Medicine** | Link dense clinical notes to anatomical diagrams and radiographic images |
+| **Psychology** | Match case study discussions to experimental data visualizations |
+| **STEM** | Bridge LaTeX-heavy derivations to step-by-step algorithmic slide visuals |
+| **Any field** | Just drop in your `.md` notes and `.pdf` slides — it works out of the box |
 
 ## Getting Started
 
-This repository is "ready-to-go" with the default directory structure already created.
+This repository is "ready-to-go" with the default directory structure already in place.
 
 ### 1. Installation
 
@@ -26,24 +41,22 @@ pip install -e .
 
 Copy your files into the pre-created folders:
 
-1.  **Notes:** Put your `.md` files in the `notes/` directory.
-2.  **Slides:** Put your `.pdf` lecture slides in the `notes/pdfs/` directory.
+- **Notes:** Put your `.md` files in the `notes/` directory.
+- **Slides:** Put your `.pdf` lecture slides in the `notes/pdfs/` directory.
 
 > **Tip:** Ensure your note filename matches your slide filename (e.g., `01_Intro.md` and `01_Intro.pdf`) for the best automatic matching.
 
 ### 3. Run the Tool
 
-Simply run the command from the root directory:
-
 ```bash
 slidelink-run
 ```
 
-The tool will analyze your notes, find the best matching slides, extract them as images into the `notes/screenshots/` folder, and insert standard Markdown links directly into your files.
+SlideLink will analyze your notes, find the best matching slides, extract them as images into `notes/screenshots/`, and insert standard Markdown image links directly into your files.
 
 ### 4. Revert Changes
 
-If you want to remove all inserted screenshots and review comments to start fresh, run:
+To remove all inserted screenshots and review comments and start fresh:
 
 ```bash
 slidelink-revert --revert
@@ -52,7 +65,7 @@ slidelink-revert --revert
 ## CLI Reference
 
 | Argument | Default | Description |
-| :--- | :--- | :--- |
+|----------|---------|-------------|
 | `--note` | None | Single markdown note to process. |
 | `--notes-dir` | `notes` | Directory containing markdown notes. |
 | `--pdf-dir` | `notes/pdfs` | Directory containing course slides (PDF). |
@@ -60,41 +73,59 @@ slidelink-revert --revert
 | `--min-score` | `0.33` | Minimum confidence score required for a match. |
 | `--subject-label` | `Lecture` | Prefix used for image filenames and logs. |
 | `--aliases-file` | None | Path to a JSON file mapping LaTeX commands to alias sets. |
-| `--headings-config` | None | Path to a JSON file with 'skip' and 'generic' heading lists. |
-| `--dry-run` | False | Log proposed changes without editing files. |
-| `--revert` | False | Remove inserted slidelink screenshots and review comments. |
+| `--headings-config` | None | Path to a JSON file with `skip` and `generic` heading lists. |
+| `--dry-run` | `False` | Log proposed changes without editing files. |
+| `--revert` | `False` | Remove inserted slidelink screenshots and review comments. |
 
-## Customizing for your subject
+## Customization
 
 ### LaTeX Aliases
 
-If you are in a STEM field, you can provide a JSON file mapping LaTeX commands to plain-text aliases to improve matching for mathematical concepts:
+For STEM fields, you can improve matching for mathematical concepts by providing a JSON file that maps LaTeX commands to plain-text aliases:
 
 ```json
 {
-    "\\nabla": ["nabla", "gradient", "grad"],
-    "\\sigma": ["sigma", "sigmoid", "standard deviation"]
+  "\\nabla": ["nabla", "gradient", "grad"],
+  "\\sigma": ["sigma", "sigmoid", "standard deviation"]
 }
 ```
 
-Usage: `slidelink-run --aliases-file examples/aliases_stem.json`
+```bash
+slidelink-run --aliases-file examples/aliases_stem.json
+```
 
 ### Heading Configuration
 
-Override which headings are skipped or treated as "generic" (requiring higher confidence) by providing a config file:
+Override which headings are skipped or treated as "generic" (requiring higher confidence):
 
 ```json
 {
-    "skip": ["introduction", "further reading"],
-    "generic": ["overview", "results"]
+  "skip": ["introduction", "further reading"],
+  "generic": ["overview", "results"]
 }
 ```
 
-Usage: `slidelink-run --headings-config examples/headings_config.json`
+```bash
+slidelink-run --headings-config examples/headings_config.json
+```
+
+## Project Structure
+
+```
+SlideLink/
+├── notes/          # Your markdown notes go here
+│   ├── pdfs/       # Your PDF slides go here
+│   └── screenshots/# Auto-generated slide images (created by the tool)
+├── slidelink/      # Core Python package
+├── examples/       # Example alias and heading config files
+├── scripts/        # Helper scripts
+└── tests/          # Test suite
+```
 
 ## Contributing
 
-Suggestions and bug reports are welcome! Please open a GitHub issue to discuss any changes.
+Suggestions and bug reports are welcome! Please [open a GitHub issue](https://github.com/yuazi/SlideLink/issues) to discuss any changes.
 
----
-License: MIT
+## License
+
+Distributed under the [MIT License](LICENSE).
