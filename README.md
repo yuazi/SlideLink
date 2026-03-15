@@ -2,7 +2,7 @@
 
 # SlideLink
 
-**Match your markdown lecture notes to the right slides — no LLM, no internet.**
+**Contextually align your markdown lecture notes with the right slides — automatically.**
 
 [![Python](https://img.shields.io/badge/python-3.8%2B-blue?logo=python&logoColor=white)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
@@ -12,24 +12,24 @@
 
 ---
 
-`SlideLink` is a CLI tool that scans your markdown notes and embeds the most relevant slide images from a PDF directly into them. It uses **TF-IDF** and **visual analysis** to figure out which slide fits each section — runs fully offline.
+`SlideLink` is a domain-agnostic CLI tool that scans your markdown lecture notes and inserts the most relevant slide images directly into them. It uses **TF-IDF semantic similarity** and **visual analysis** to match note sections to PDF slides — no LLM required, no internet needed.
 
 ## Why use this?
 
-| Field | Example |
-|---|---|
-| **Medicine** | Link clinical notes to anatomical diagrams and X-rays |
-| **Psychology** | Connect case study notes to experimental data visualizations |
-| **STEM** | Pair LaTeX-heavy derivations with the matching algorithmic slide |
-| **Anything else** | Drop in your `.md` notes and `.pdf` slides and run it |
+| Field | Use Case |
+|-------|----------|
+| **Medicine** | Link dense clinical notes to anatomical diagrams and radiographic images |
+| **Psychology** | Match case study discussions to experimental data visualizations |
+| **STEM** | Bridge LaTeX-heavy derivations to step-by-step algorithmic slide visuals |
+| **Any field** | Just drop in your `.md` notes and `.pdf` slides — it works out of the box |
 
 ## Getting Started
 
-The repo already has the expected folder structure set up, so you can jump straight to installation.
+This repository is "ready-to-go" with the default directory structure already in place.
 
 ### 1. Installation
 
-Clone and install in editable mode:
+Clone the repository and install the package in editable mode:
 
 ```bash
 git clone https://github.com/yuazi/SlideLink.git
@@ -37,24 +37,26 @@ cd SlideLink
 pip install -e .
 ```
 
-### 2. Add your files
+### 2. Add your Files
 
-- **Notes:** drop your `.md` files into `notes/`
-- **Slides:** drop your `.pdf` files into `notes/pdfs/`
+Copy your files into the pre-created folders:
 
-> **Tip:** Matching works best when note and slide filenames are the same (e.g. `01_Intro.md` and `01_Intro.pdf`).
+- **Notes:** Put your `.md` files in the `notes/` directory.
+- **Slides:** Put your `.pdf` lecture slides in the `notes/pdfs/` directory.
 
-### 3. Run
+> **Tip:** Ensure your note filename matches your slide filename (e.g., `01_Intro.md` and `01_Intro.pdf`) for the best automatic matching.
+
+### 3. Run the Tool
 
 ```bash
 slidelink-run
 ```
 
-SlideLink will find the best matching slides, export them as images into `notes/screenshots/`, and insert the image links into your notes.
+SlideLink will analyze your notes, find the best matching slides, extract them as images into `notes/screenshots/`, and insert standard Markdown image links directly into your files.
 
-### 4. Undo
+### 4. Revert Changes
 
-To strip all inserted screenshots and comments:
+To remove all inserted screenshots and review comments and start fresh:
 
 ```bash
 slidelink-revert --revert
@@ -63,23 +65,23 @@ slidelink-revert --revert
 ## CLI Reference
 
 | Argument | Default | Description |
-|---|---|---|
-| `--note` | None | Process a single markdown file instead of the whole directory. |
-| `--notes-dir` | `notes` | Directory with markdown notes. |
-| `--pdf-dir` | `notes/pdfs` | Directory with PDF slides. |
-| `--asset-dir` | `notes/screenshots` | Where extracted slide images go. |
-| `--min-score` | `0.33` | Minimum similarity score to accept a match. |
-| `--subject-label` | `Lecture` | Prefix for image filenames and log output. |
-| `--aliases-file` | None | JSON file mapping LaTeX commands to plain-text aliases. |
-| `--headings-config` | None | JSON file with `skip` and `generic` heading lists. |
-| `--dry-run` | `False` | Preview changes without touching any files. |
-| `--revert` | `False` | Remove all inserted screenshots and review comments. |
+|----------|---------|-------------|
+| `--note` | None | Single markdown note to process. |
+| `--notes-dir` | `notes` | Directory containing markdown notes. |
+| `--pdf-dir` | `notes/pdfs` | Directory containing course slides (PDF). |
+| `--asset-dir` | `notes/screenshots` | Target asset root for extracted images. |
+| `--min-score` | `0.33` | Minimum confidence score required for a match. |
+| `--subject-label` | `Lecture` | Prefix used for image filenames and logs. |
+| `--aliases-file` | None | Path to a JSON file mapping LaTeX commands to alias sets. |
+| `--headings-config` | None | Path to a JSON file with `skip` and `generic` heading lists. |
+| `--dry-run` | `False` | Log proposed changes without editing files. |
+| `--revert` | `False` | Remove inserted slidelink screenshots and review comments. |
 
 ## Customization
 
 ### LaTeX Aliases
 
-For math-heavy notes, you can map LaTeX commands to readable aliases so the TF-IDF matching works better:
+For STEM fields, you can improve matching for mathematical concepts by providing a JSON file that maps LaTeX commands to plain-text aliases:
 
 ```json
 {
@@ -92,9 +94,9 @@ For math-heavy notes, you can map LaTeX commands to readable aliases so the TF-I
 slidelink-run --aliases-file examples/aliases_stem.json
 ```
 
-### Heading Config
+### Heading Configuration
 
-Control which headings get skipped or need a higher confidence score before a slide is inserted:
+Override which headings are skipped or treated as "generic" (requiring higher confidence):
 
 ```json
 {
@@ -122,8 +124,8 @@ SlideLink/
 
 ## Contributing
 
-Bug reports and suggestions are welcome — just [open an issue](https://github.com/yuazi/SlideLink/issues).
+Suggestions and bug reports are welcome! Please [open a GitHub issue](https://github.com/yuazi/SlideLink/issues) to discuss any changes.
 
 ## License
 
-[MIT](LICENSE)
+Distributed under the [MIT License](LICENSE).
