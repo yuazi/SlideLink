@@ -152,7 +152,11 @@ cython_debug/
 # VS Code
 .vscode/
 
+# macOS
+.DS_Store
+
 # Project-specific
+notes/.obsidian/
 notes/*.md
 notes/pdfs/*.pdf
 notes/screenshots/**/*
