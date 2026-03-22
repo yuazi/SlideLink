@@ -345,6 +345,34 @@ def extract_slide_features(pdf_path: Path) -> tuple[Any, list[SlideFeatures]]:
     return document, slides
 
 
+def is_build_of(slide_b: SlideFeatures, slide_a: SlideFeatures) -> bool:
+    """Returns True if slide_b is likely a more complete 'build' of slide_a."""
+    if slide_b.page_number <= slide_a.page_number:
+        return False
+    # Limit build detection to nearby slides
+    if slide_b.page_number - slide_a.page_number > 4:
+        return False
+    # Titles must be very similar
+    title_a = normalize_text(slide_a.top_text)
+    title_b = normalize_text(slide_b.top_text)
+    if not title_a or not title_b:
+        return False
+    if title_a != title_b and title_a not in title_b and title_b not in title_a:
+        return False
+    # Slide B should contain most of slide A's text
+    tokens_a = set(slide_a.normalized_text.split())
+    if not tokens_a:
+        return True
+    tokens_b = set(slide_b.normalized_text.split())
+    missing = tokens_a - tokens_b
+    if len(missing) / len(tokens_a) > 0.15:
+        return False
+    # Slide B should not have significantly less visual signal than A
+    if slide_b.visual_signal < slide_a.visual_signal - 0.05:
+        return False
+    return True
+
+
 def title_similarity(candidate: SectionCandidate, slide: SlideFeatures) -> float:
     heading_text = normalize_text(candidate.heading_text)
     if not heading_text:
@@ -411,6 +439,29 @@ def score_slides(
                     visual_bonus=visual_bonus,
                 )
             )
+
+        # Build Preference Pass: identify sequences where one slide is a build of another.
+        # If slide B is a build of slide A, give B a small bonus to ensure it's preferred
+        # over the partial version if their semantic/title scores are similar.
+        if len(ranked) >= 2:
+            for i in range(len(ranked)):
+                # Only check builds if the score is already somewhat promising
+                if ranked[i].total < 0.30:
+                    continue
+                for j in range(len(ranked)):
+                    if i == j or ranked[j].total < 0.30:
+                        continue
+                    if is_build_of(ranked[i].slide, ranked[j].slide):
+                        # ranked[i] is a more complete version of ranked[j]
+                        # Apply a stability boost to the more complete slide
+                        ranked[i] = SlideScore(
+                            slide=ranked[i].slide,
+                            total=ranked[i].total + 0.05,
+                            semantic=ranked[i].semantic,
+                            title=ranked[i].title,
+                            math_bonus=ranked[i].math_bonus,
+                            visual_bonus=ranked[i].visual_bonus,
+                        )
 
         ranked.sort(key=lambda item: item.total, reverse=True)
         if not ranked:
