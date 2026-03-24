@@ -8,11 +8,35 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![CI](https://github.com/yuazi/SlideLink/actions/workflows/ci.yml/badge.svg)](https://github.com/yuazi/SlideLink/actions)
 
+<img src="assets/terminal_real.png" alt="SlideLink Terminal Screenshot" width="800">
+
 </div>
 
 ---
 
 `SlideLink` is a CLI tool that scans your markdown notes and embeds the most relevant slide images from a PDF directly into them. It uses **TF-IDF** and **visual analysis** to figure out which slide fits each section — runs fully offline.
+
+## How it looks
+
+When you run `slidelink-run`, the tool analyzes your sections and gives you real-time feedback:
+
+- **`[insert]`**: High-confidence match found. The slide is rendered as a PNG and linked in your markdown.
+- **`[review]`**: Ambiguous match (multiple slides with similar scores). Both are linked with a comment for you to choose the best one.
+- **`[skip]`**: No strong match found; no changes made to that section.
+
+### In your Markdown:
+Before:
+```markdown
+### Multi-Layer Perceptron (MLP)
+The network output is f(X; W, b).
+```
+
+After:
+```markdown
+### Multi-Layer Perceptron (MLP)
+![](screenshots/01/Lecture01_Pg030_Multi_Layer_Perceptron_Mlp.png)
+The network output is f(X; W, b).
+```
 
 ## Key Features
 
