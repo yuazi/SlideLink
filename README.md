@@ -2,7 +2,7 @@
 
 # SlideLink
 
-**Match your markdown lecture notes to the right slides — no LLM, no internet.**
+Match your Markdown lecture notes to PDF slides.
 
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue?logo=python&logoColor=white)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
@@ -14,17 +14,18 @@
 
 ---
 
-`SlideLink` is a CLI tool that scans your markdown notes and embeds the most relevant slide images from a PDF directly into them. It uses **TF-IDF** and **visual analysis** to figure out which slide fits each section — runs fully offline.
+`SlideLink` matches sections in your Markdown notes to PDF slides and inserts links to PNG images. It uses TF-IDF text similarity and visual analysis. Everything runs offline, with no LLM or API keys; your notes and slides stay on your machine.
 
 ## How it looks
 
-When you run `slidelink-run`, the tool analyzes your sections and gives you real-time feedback:
+As `slidelink-run` processes each section, it prints one of these results:
 
-- **`[insert]`**: High-confidence match found. The slide is rendered as a PNG and linked in your markdown.
-- **`[review]`**: Ambiguous match (multiple slides with similar scores). Both are linked with a comment for you to choose the best one.
-- **`[skip]`**: No strong match found; no changes made to that section.
+- `[insert]`: A slide scored high enough to match. SlideLink renders it as a PNG and adds the link to your notes.
+- `[review]`: Two slides have similar scores. SlideLink links both and adds a comment so you can choose.
+- `[skip]`: No strong match was found. The section stays as it is.
 
-### In your Markdown:
+### In your Markdown
+
 Before:
 ```markdown
 ### Multi-Layer Perceptron (MLP)
@@ -41,26 +42,24 @@ After:
 The network output is f(X; W, b).
 ```
 
-## Key Features
+## Matching
 
-- **TF-IDF Semantic Matching**: Uses term frequency-inverse document frequency to find the most relevant slide for each note section.
-- **Visual Analysis**: Detects diagrams, images, and drawing density to prioritize slides with high visual information.
-- **Build-Slide Detection**: Automatically identifies "build" sequences (where content is added across multiple slides) and selects the most complete version of the slide.
-- **LaTeX Support**: Optional alias mapping for math-heavy notes to improve matching accuracy.
-- **Fully Offline**: No data leaves your machine. No LLM or API keys required.
+TF-IDF (term frequency-inverse document frequency) compares the words in each note section with the slide text. Visual analysis checks images, diagrams, and drawing density to favor slides with useful visual content.
+
+For "build" sequences, where successive slides add content, SlideLink favors the more complete slide. Optional LaTeX aliases help match math-heavy notes to slide text.
 
 ## Why use this?
 
 | Field | Example |
 |---|---|
-| **Medicine** | Link clinical notes to anatomical diagrams and X-rays |
-| **Psychology** | Connect case study notes to experimental data visualizations |
-| **STEM** | Pair LaTeX-heavy derivations with the matching algorithmic slide |
-| **Anything else** | Drop in your `.md` notes and `.pdf` slides and run it |
+| Medicine | Link clinical notes to anatomical diagrams and X-rays |
+| Psychology | Connect case study notes to experimental data visualizations |
+| STEM | Pair LaTeX-heavy derivations with the matching algorithmic slide |
+| Other subjects | Match your `.md` notes to `.pdf` slides |
 
-## Getting Started
+## Getting started
 
-The repo already has the expected folder structure set up, so you can jump straight to installation.
+The repo includes the folders used below.
 
 ### 1. Installation
 
@@ -74,10 +73,10 @@ pip install -e .
 
 ### 2. Add your files
 
-- **Notes:** drop your `.md` files into `notes/`
-- **Slides:** drop your `.pdf` files into `notes/pdfs/`
+- Put your `.md` notes in `notes/`.
+- Put your `.pdf` slides in `notes/pdfs/`.
 
-> **Tip:** Matching works best when note and slide filenames are the same (e.g. `01_Intro.md` and `01_Intro.pdf`).
+Use matching filenames for each note and PDF, such as `01_Intro.md` and `01_Intro.pdf`.
 
 ### 3. Run
 
@@ -85,9 +84,9 @@ pip install -e .
 slidelink-run
 ```
 
-SlideLink will find the best matching slides, export them as images into `notes/screenshots/`, and insert the image links into your notes.
+SlideLink exports matching slides to `notes/screenshots/` and inserts the image links into your notes.
 
-Image links are relative to each note, including when you use `--asset-dir` with a custom folder. Spaces and special characters in paths are escaped automatically. PDFs with no searchable words are skipped; scanned slides need OCR before matching.
+Image links are relative to each note, including when you choose a custom folder with `--asset-dir`. Spaces and special characters in paths are escaped automatically. SlideLink skips PDFs with no searchable words; scanned slides need OCR before matching.
 
 ### 4. Undo
 
@@ -97,9 +96,11 @@ To remove SlideLink's inserted image links and review comments:
 slidelink-revert --revert
 ```
 
-Hidden `slidelink:start` / `slidelink:end` comments identify new insertions. Undo also recognizes older links in `screenshots/` with SlideLink's numbered `*_PgNNN_*.png` filenames. Other images, Obsidian embeds, code fences, and frontmatter are preserved. Exported PNG files stay on disk. Use `--dry-run --revert` to preview which notes would change.
+Hidden `slidelink:start` / `slidelink:end` comments identify new insertions. Undo also recognizes older links in `screenshots/` with SlideLink's numbered `*_PgNNN_*.png` filenames.
 
-## CLI Reference
+Other images, Obsidian embeds, code fences, and frontmatter stay intact. Exported PNG files stay on disk. Use `--dry-run --revert` to preview which notes would change.
+
+## CLI reference
 
 | Argument | Default | Description |
 |---|---|---|
@@ -112,13 +113,13 @@ Hidden `slidelink:start` / `slidelink:end` comments identify new insertions. Und
 | `--aliases-file` | None | JSON file mapping LaTeX commands to plain-text aliases. |
 | `--headings-config` | None | JSON file with `skip` and `generic` heading lists. |
 | `--dry-run` | `False` | Preview changes without touching any files. |
-| `--revert` | `False` | Remove all inserted screenshots and review comments. |
+| `--revert` | `False` | Remove SlideLink's image links and review comments from notes. |
 
 ## Customization
 
-### LaTeX Aliases
+### LaTeX aliases
 
-For math-heavy notes, you can map LaTeX commands to readable aliases so the TF-IDF matching works better:
+Map LaTeX commands to words that may appear in the slides:
 
 ```json
 {
@@ -131,9 +132,9 @@ For math-heavy notes, you can map LaTeX commands to readable aliases so the TF-I
 slidelink-run --aliases-file examples/aliases_stem.json
 ```
 
-### Heading Config
+### Heading config
 
-Control which headings get skipped or need a higher confidence score before a slide is inserted:
+Choose headings to skip or require a higher match score:
 
 ```json
 {
@@ -146,7 +147,7 @@ Control which headings get skipped or need a higher confidence score before a sl
 slidelink-run --headings-config examples/headings_config.json
 ```
 
-## Project Structure
+## Project structure
 
 ```
 SlideLink/
@@ -161,7 +162,7 @@ SlideLink/
 
 ## Contributing
 
-Bug reports and suggestions are welcome — just [open an issue](https://github.com/yuazi/SlideLink/issues).
+[Open an issue](https://github.com/yuazi/SlideLink/issues) to report a bug or suggest a change.
 
 ## License
 

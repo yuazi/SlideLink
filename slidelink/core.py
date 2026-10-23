@@ -4,7 +4,7 @@ import argparse
 import json
 import os
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from difflib import SequenceMatcher
 from pathlib import Path
 from typing import Any, Iterable
@@ -44,6 +44,7 @@ LEGACY_INSERTION_RE = re.compile(
 DEFAULT_NOTES_DIR = Path("notes")
 DEFAULT_PDF_DIR = DEFAULT_NOTES_DIR / "pdfs"
 DEFAULT_ASSET_DIR = DEFAULT_NOTES_DIR / "screenshots"
+BUILD_PAGE_WINDOW = 4
 
 # Default values for SKIP_HEADINGS and GENERIC_HEADINGS
 DEFAULT_SKIP_HEADINGS = {
@@ -361,11 +362,11 @@ def extract_slide_features(pdf_path: Path) -> tuple[Any, list[SlideFeatures]]:
 
 
 def is_build_of(slide_b: SlideFeatures, slide_a: SlideFeatures) -> bool:
-    """Returns True if slide_b is likely a more complete 'build' of slide_a."""
+    """Estimate whether a later slide adds content to an earlier one."""
     if slide_b.page_number <= slide_a.page_number:
         return False
     # Limit build detection to nearby slides
-    if slide_b.page_number - slide_a.page_number > 4:
+    if slide_b.page_number - slide_a.page_number > BUILD_PAGE_WINDOW:
         return False
     # Titles must be very similar
     title_a = normalize_text(slide_a.top_text)
@@ -396,9 +397,10 @@ def title_similarity(candidate: SectionCandidate, slide: SlideFeatures) -> float
     if not top_text:
         return 0.0
     overlap = token_overlap_score(heading_text, top_text)
+    if overlap == 1.0 or heading_text in top_text:
+        return 1.0
     fuzzy = SequenceMatcher(None, heading_text, top_text).ratio()
-    contains = 1.0 if heading_text in top_text else 0.0
-    return max(overlap, fuzzy * 0.8, contains)
+    return max(overlap, fuzzy * 0.8)
 
 
 def token_overlap_score(left: str, right: str) -> float:
@@ -427,6 +429,15 @@ def score_slides(
         print(f"[skip] {candidates[0].note_path.name} :: No searchable slide text found in the PDF.")
         return []
     slide_matrix = vectorizer.fit_transform(slide_texts)
+
+    # Every section uses the same build relationships within a PDF.
+    visual_slides = {slide.page_number: slide for slide in slides if slide.has_visuals}
+    build_sources: dict[int, list[int]] = {}
+    for page_number, slide in visual_slides.items():
+        build_sources[page_number] = [
+            previous for previous in range(page_number - BUILD_PAGE_WINDOW, page_number)
+            if previous in visual_slides and is_build_of(slide, visual_slides[previous])
+        ]
 
     decisions: list[MatchDecision] = []
     for candidate in candidates:
@@ -461,28 +472,14 @@ def score_slides(
                 )
             )
 
-        # Build Preference Pass: identify sequences where one slide is a build of another.
-        # If slide B is a build of slide A, give B a small bonus to ensure it's preferred
-        # over the partial version if their semantic/title scores are similar.
-        if len(ranked) >= 2:
-            for i in range(len(ranked)):
-                # Only check builds if the score is already somewhat promising
-                if ranked[i].total < 0.30:
-                    continue
-                for j in range(len(ranked)):
-                    if i == j or ranked[j].total < 0.30:
-                        continue
-                    if is_build_of(ranked[i].slide, ranked[j].slide):
-                        # ranked[i] is a more complete version of ranked[j]
-                        # Apply a stability boost to the more complete slide
-                        ranked[i] = SlideScore(
-                            slide=ranked[i].slide,
-                            total=ranked[i].total + 0.05,
-                            semantic=ranked[i].semantic,
-                            title=ranked[i].title,
-                            math_bonus=ranked[i].math_bonus,
-                            visual_bonus=ranked[i].visual_bonus,
-                        )
+        eligible_pages = {score.slide.page_number for score in ranked if score.total >= 0.30}
+        for index, score in enumerate(ranked):
+            if score.slide.page_number not in eligible_pages:
+                continue
+            for previous in build_sources[score.slide.page_number]:
+                if previous in eligible_pages:
+                    score = replace(score, total=score.total + 0.05)
+            ranked[index] = score
 
         ranked.sort(key=lambda item: item.total, reverse=True)
         if not ranked:
@@ -783,7 +780,7 @@ def process_note(
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Contextually align lecture notes with course slides using semantic similarity."
+        description="Match Markdown lecture notes to PDF slides and insert image links."
     )
     parser.add_argument("--note", help="Single markdown note to process.")
     parser.add_argument(

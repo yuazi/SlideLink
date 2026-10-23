@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "slidelink"
 version = "0.1.0"
-description = "Contextually align lecture notes with course slides using semantic similarity."
+description = "Match Markdown lecture notes to PDF slides and insert image links."
 readme = "README.md"
 requires-python = ">=3.11"
 license = {text = "MIT"}
