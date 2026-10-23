@@ -48,6 +48,8 @@ TF-IDF (term frequency-inverse document frequency) compares the words in each no
 
 For "build" sequences, where successive slides add content, SlideLink favors the more complete slide. Optional LaTeX aliases help match math-heavy notes to slide text.
 
+Headings, text, and image links inside fenced code blocks or YAML frontmatter do not affect matching. Both backtick and tilde fences are supported, including longer fences around Markdown examples.
+
 ## Why use this?
 
 | Field | Example |

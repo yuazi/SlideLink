@@ -164,23 +164,35 @@ def is_substantive_line(line: str) -> bool:
     return True
 
 
-def collect_context_lines(lines: list[str], start: int, end: int, limit: int = 5) -> list[str]:
-    context: list[str] = []
-    in_fence = False
-    for idx in range(start, end):
-        stripped = lines[idx].rstrip("\n")
-        fence = stripped.strip().startswith("```")
+def mask_markdown_blocks(lines: Iterable[str]) -> Iterable[str]:
+    """Hide frontmatter and fenced code while preserving line positions."""
+    fence = ""
+    frontmatter = False
+    for index, line in enumerate(lines):
+        stripped = line.rstrip("\r\n")
+        if index == 0 and stripped.rstrip() == "---":
+            frontmatter = True
+            yield ""
+            continue
+        if frontmatter:
+            if stripped.rstrip() in {"---", "..."}:
+                frontmatter = False
+            yield ""
+            continue
+        fence_match = re.match(r"^ {0,3}(`{3,}|~{3,})(.*)$", stripped)
         if fence:
-            in_fence = not in_fence
+            if (
+                fence_match and fence_match[1][0] == fence[0]
+                and len(fence_match[1]) >= len(fence) and not fence_match[2].strip()
+            ):
+                fence = ""
+            yield ""
             continue
-        if in_fence:
-            continue
-        if not is_substantive_line(stripped):
-            continue
-        context.append(stripped.strip())
-        if len(context) >= limit:
-            break
-    return context
+        if fence_match and (fence_match[1][0] == "~" or "`" not in fence_match[2]):
+            fence = fence_match[1]
+            yield ""
+        else:
+            yield line
 
 
 def extract_math_terms(*parts: str) -> tuple[str, ...]:
@@ -212,26 +224,10 @@ def is_generic_heading(candidate: SectionCandidate, generic_headings: set[str]) 
 
 
 def parse_markdown_candidates(note_path: Path, skip_headings: set[str]) -> list[SectionCandidate]:
-    lines = note_path.read_text(encoding="utf-8").splitlines()
+    lines = list(mask_markdown_blocks(note_path.read_text(encoding="utf-8").splitlines()))
     headings: list[tuple[int, int, str, tuple[str, ...]]] = []
     stack: list[tuple[int, str]] = []
-    in_fence = False
-    in_frontmatter = False
-
     for idx, raw_line in enumerate(lines):
-        stripped = raw_line.strip()
-        if idx == 0 and stripped == "---":
-            in_frontmatter = True
-            continue
-        if in_frontmatter:
-            if stripped == "---":
-                in_frontmatter = False
-            continue
-        if stripped.startswith("```"):
-            in_fence = not in_fence
-            continue
-        if in_fence:
-            continue
         match = HEADING_RE.match(raw_line)
         if not match:
             continue
@@ -255,7 +251,7 @@ def parse_markdown_candidates(note_path: Path, skip_headings: set[str]) -> list[
         normalized_heading = normalize_text(heading_text)
         if normalized_heading in skip_headings:
             continue
-        context_lines = collect_context_lines(lines, line_number + 1, next_heading_line, limit=5)
+        context_lines = [line.strip() for line in block if is_substantive_line(line)][:5]
         if not context_lines:
             continue
         body_words = len(normalize_text(" ".join(context_lines)).split())
@@ -635,36 +631,16 @@ def revert_note(note_path: Path, dry_run: bool) -> int:
         content = note.read()
     blocks = {match.start(): match.end() for match in GENERATED_BLOCK_RE.finditer(content)}
     kept: list[str] = []
-    fence = ""
-    frontmatter = False
     offset = 0
     skip_until = 0
-    for index, line in enumerate(content.splitlines(keepends=True)):
+    lines = content.splitlines(keepends=True)
+    for line, visible in zip(lines, mask_markdown_blocks(lines), strict=True):
         start = offset
         offset += len(line)
         if start < skip_until:
             continue
         stripped = line.rstrip("\r\n")
-        if index == 0 and stripped == "---":
-            frontmatter = True
-            kept.append(line)
-            continue
-        if frontmatter:
-            if stripped in {"---", "..."}:
-                frontmatter = False
-            kept.append(line)
-            continue
-        fence_match = re.match(r"^ {0,3}(`{3,}|~{3,})(.*)$", stripped)
-        if fence:
-            if (
-                fence_match and fence_match[1][0] == fence[0]
-                and len(fence_match[1]) >= len(fence) and not fence_match[2].strip()
-            ):
-                fence = ""
-            kept.append(line)
-            continue
-        if fence_match:
-            fence = fence_match[1]
+        if not visible:
             kept.append(line)
         elif start in blocks:
             skip_until = blocks[start]
