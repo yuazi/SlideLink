@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 from dataclasses import dataclass
 from difflib import SequenceMatcher
 from pathlib import Path
 from typing import Any, Iterable
+from urllib.parse import quote
 
 try:
     import fitz  # type: ignore[import-not-found]
@@ -25,6 +27,19 @@ HEADING_RE = re.compile(r"^(#{2,6})\s+(.+?)\s*$")
 IMAGE_RE = re.compile(r"!\[\[.*?\]\]|!\[.*?\]\(.*?\)")
 LATEX_CMD_RE = re.compile(r"\\[A-Za-z]+(?:\{[^}]+\})?")
 NON_WORD_RE = re.compile(r"[^a-z0-9]+")
+GENERATED_BLOCK_RE = re.compile(
+    r"^<!-- slidelink:start -->\r?\n"
+    r"(?:!\[\]\([^\r\n]+\)\r?\n|<!-- Review Needed: [^\r\n]* -->\r?\n)+"
+    r"\r?\n<!-- slidelink:end -->(?:\r?\n|$)",
+    re.MULTILINE,
+)
+# shortcut: legacy links lack ownership markers; drop filename matching once old notes are migrated.
+LEGACY_IMAGE_PATH = r"screenshots/(?:\d{2}/)?[^/\r\n]+\d{2}_Pg\d{3,}_[A-Za-z0-9_]+\.png"
+LEGACY_INSERTION_RE = re.compile(
+    rf"(?:!\[\]\({LEGACY_IMAGE_PATH}\)|!\[\[{LEGACY_IMAGE_PATH}\]\]|"
+    r"<!-- Review Needed: close slide match for '[^\r\n]*' "
+    r"\(p\d+: \d+\.\d{3}, p\d+: \d+\.\d{3}\) -->)"
+)
 
 DEFAULT_NOTES_DIR = Path("notes")
 DEFAULT_PDF_DIR = DEFAULT_NOTES_DIR / "pdfs"
@@ -403,9 +418,15 @@ def score_slides(
     assert TfidfVectorizer is not None
     assert cosine_similarity is not None
 
+    if not candidates or not slides:
+        return []
     slide_texts = [slide.text or slide.top_text for slide in slides]
     vectorizer = TfidfVectorizer(stop_words="english", ngram_range=(1, 2))
-    slide_matrix = vectorizer.fit_transform(slide_texts or [""])
+    analyze = vectorizer.build_analyzer()
+    if not any(analyze(text) for text in slide_texts):
+        print(f"[skip] {candidates[0].note_path.name} :: No searchable slide text found in the PDF.")
+        return []
+    slide_matrix = vectorizer.fit_transform(slide_texts)
 
     decisions: list[MatchDecision] = []
     for candidate in candidates:
@@ -540,12 +561,11 @@ def insertion_snippet(
     for match in decision.matches:
         filename = image_filename(subject_label, lecture_number, match.slide.page_number, decision.candidate.concept_slug)
         image_paths.append(asset_folder / filename)
-        # Use standard markdown relative to notes folder (screenshots/ID/filename)
-        # Default asset_dir is notes/screenshots, so relative path is screenshots/ID/filename
-        rel_path = f"screenshots/{lecture_number}/{filename}"
+        rel_path = Path(os.path.relpath(image_paths[-1], decision.candidate.note_path.parent)).as_posix()
+        rel_path = quote(rel_path, safe="/")
         links.append(f"![]({rel_path})")
 
-    lines: list[str] = []
+    lines = ["<!-- slidelink:start -->"]
     if decision.review_needed and len(decision.matches) == 2:
         first, second = decision.matches
         lines.append(
@@ -554,6 +574,7 @@ def insertion_snippet(
         )
     lines.extend(links)
     lines.append("")
+    lines.append("<!-- slidelink:end -->")
     return lines, image_paths
 
 
@@ -564,8 +585,10 @@ def apply_insertions(
     subject_label: str,
     asset_dir: Path,
 ) -> tuple[int, int]:
-    lines = note_path.read_text(encoding="utf-8").splitlines()
-    existing_text = "\n".join(lines)
+    with note_path.open(encoding="utf-8", newline="") as note:
+        existing_text = note.read()
+    lines = existing_text.splitlines(keepends=True)
+    newline = "\r\n" if "\r\n" in existing_text else "\n"
     lecture_number = extract_lecture_number(note_path)
     if lecture_number is None:
         print(f"[skip] Could not determine identifier for {note_path}")
@@ -601,32 +624,62 @@ def apply_insertions(
         return (0, linked)
 
     for line_number, snippet in sorted(inserts, key=lambda item: item[0], reverse=True):
-        lines[line_number:line_number] = snippet
+        lines[line_number:line_number] = [line + newline for line in snippet]
 
-    note_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    with note_path.open("w", encoding="utf-8", newline="") as note:
+        note.write("".join(lines))
     return (0, linked)
 
 
 def revert_note(note_path: Path, dry_run: bool) -> int:
     if not note_path.exists():
         return 0
-    content = note_path.read_text(encoding="utf-8")
-    original_len = len(content)
-    
-    # Remove review comments
-    content = re.sub(r"<!-- Review Needed: .*? -->\n?", "", content)
-    # Remove slidelink screenshots (matching standard markdown or wiki links to screenshots/ folder)
-    content = re.sub(r"!\[\[.*?\]\]\n?", "", content)
-    content = re.sub(r"!\[\]\(screenshots/.*?\)\n?", "", content)
-    
-    # Collapse triple newlines (often left by removals)
-    content = re.sub(r"\n{3,}", "\n\n", content)
-    
-    if len(content) == original_len:
+    with note_path.open(encoding="utf-8", newline="") as note:
+        content = note.read()
+    blocks = {match.start(): match.end() for match in GENERATED_BLOCK_RE.finditer(content)}
+    kept: list[str] = []
+    fence = ""
+    frontmatter = False
+    offset = 0
+    skip_until = 0
+    for index, line in enumerate(content.splitlines(keepends=True)):
+        start = offset
+        offset += len(line)
+        if start < skip_until:
+            continue
+        stripped = line.rstrip("\r\n")
+        if index == 0 and stripped == "---":
+            frontmatter = True
+            kept.append(line)
+            continue
+        if frontmatter:
+            if stripped in {"---", "..."}:
+                frontmatter = False
+            kept.append(line)
+            continue
+        fence_match = re.match(r"^ {0,3}(`{3,}|~{3,})(.*)$", stripped)
+        if fence:
+            if (
+                fence_match and fence_match[1][0] == fence[0]
+                and len(fence_match[1]) >= len(fence) and not fence_match[2].strip()
+            ):
+                fence = ""
+            kept.append(line)
+            continue
+        if fence_match:
+            fence = fence_match[1]
+            kept.append(line)
+        elif start in blocks:
+            skip_until = blocks[start]
+        elif not LEGACY_INSERTION_RE.fullmatch(stripped):
+            kept.append(line)
+
+    updated = "".join(kept)
+    if updated == content:
         return 0
-        
     if not dry_run:
-        note_path.write_text(content, encoding="utf-8")
+        with note_path.open("w", encoding="utf-8", newline="") as note:
+            note.write(updated)
     return 1
 
 
@@ -639,7 +692,7 @@ def materialize_images(
     asset_dir: Path,
 ) -> int:
     lecture_number = extract_lecture_number(note_path)
-    if lecture_number is None:
+    if lecture_number is None or not decisions:
         return 0
     asset_folder = asset_dir / lecture_number
     if not dry_run:
@@ -787,8 +840,6 @@ def main() -> int:
     parser = build_parser()
     args = parser.parse_args()
 
-    require_runtime_dependencies()
-
     notes = resolve_notes(args.note, args.notes_dir)
     if not notes:
         print("[skip] No lecture notes found to process.")
@@ -803,6 +854,8 @@ def main() -> int:
                 print(f"[{action}] {note_path.name}")
         print(f"[done] mode={'dry-run' if args.dry_run else 'write'} reverted={reverted_count}")
         return 0
+
+    require_runtime_dependencies()
 
     aliases: dict[str, set[str]] = {}
     if args.aliases_file:

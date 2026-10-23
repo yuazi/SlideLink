@@ -4,7 +4,7 @@
 
 **Match your markdown lecture notes to the right slides — no LLM, no internet.**
 
-[![Python](https://img.shields.io/badge/python-3.8%2B-blue?logo=python&logoColor=white)](https://www.python.org/)
+[![Python](https://img.shields.io/badge/python-3.11%2B-blue?logo=python&logoColor=white)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![CI](https://github.com/yuazi/SlideLink/actions/workflows/ci.yml/badge.svg)](https://github.com/yuazi/SlideLink/actions)
 
@@ -34,7 +34,10 @@ The network output is f(X; W, b).
 After:
 ```markdown
 ### Multi-Layer Perceptron (MLP)
+<!-- slidelink:start -->
 ![](screenshots/01/Lecture01_Pg030_Multi_Layer_Perceptron_Mlp.png)
+
+<!-- slidelink:end -->
 The network output is f(X; W, b).
 ```
 
@@ -84,13 +87,17 @@ slidelink-run
 
 SlideLink will find the best matching slides, export them as images into `notes/screenshots/`, and insert the image links into your notes.
 
+Image links are relative to each note, including when you use `--asset-dir` with a custom folder. Spaces and special characters in paths are escaped automatically. PDFs with no searchable words are skipped; scanned slides need OCR before matching.
+
 ### 4. Undo
 
-To strip all inserted screenshots and comments:
+To remove SlideLink's inserted image links and review comments:
 
 ```bash
 slidelink-revert --revert
 ```
+
+Hidden `slidelink:start` / `slidelink:end` comments identify new insertions. Undo also recognizes older links in `screenshots/` with SlideLink's numbered `*_PgNNN_*.png` filenames. Other images, Obsidian embeds, code fences, and frontmatter are preserved. Exported PNG files stay on disk. Use `--dry-run --revert` to preview which notes would change.
 
 ## CLI Reference
 
