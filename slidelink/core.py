@@ -4,6 +4,7 @@ import argparse
 import json
 import os
 import re
+import sys
 from dataclasses import dataclass, replace
 from difflib import SequenceMatcher
 from pathlib import Path
@@ -209,11 +210,9 @@ def expand_math_aliases(math_terms: Iterable[str], aliases: dict[str, set[str]])
     expanded: set[str] = set()
     for term in math_terms:
         expanded.update(aliases.get(term, set()))
-        stripped = term.lstrip("\\")
-        stripped = stripped.split("{", 1)[0]
-        if stripped:
-            expanded.add(stripped.lower())
-    return expanded
+        expanded.add(term.lstrip("\\").split("{", 1)[0])
+    # Slide text is normalized to a-z0-9 words, so aliases must be too; symbols like ∇ normalize away.
+    return {normalize_text(alias) for alias in expanded} - {""}
 
 
 def is_generic_heading(candidate: SectionCandidate, generic_headings: set[str]) -> bool:
@@ -447,11 +446,8 @@ def score_slides(
                 continue
             semantic = float(semantic_scores[index])
             title = title_similarity(candidate, slide)
-            math_hits = 0
-            if math_aliases:
-                for alias in math_aliases:
-                    if alias and alias.lower() in slide.normalized_text:
-                        math_hits += 1
+            padded_text = f" {slide.normalized_text} "
+            math_hits = sum(f" {alias} " in padded_text for alias in math_aliases)
             math_bonus = 0.0
             if math_aliases:
                 math_bonus = min(0.18, 0.18 * (math_hits / len(math_aliases)))
@@ -577,7 +573,7 @@ def apply_insertions(
     dry_run: bool,
     subject_label: str,
     asset_dir: Path,
-) -> tuple[int, int]:
+) -> int:
     with note_path.open(encoding="utf-8", newline="") as note:
         existing_text = note.read()
     lines = existing_text.splitlines(keepends=True)
@@ -585,7 +581,7 @@ def apply_insertions(
     lecture_number = extract_lecture_number(note_path)
     if lecture_number is None:
         print(f"[skip] Could not determine identifier for {note_path}")
-        return (0, 0)
+        return 0
 
     inserts: list[tuple[int, list[str]]] = []
     linked = 0
@@ -614,14 +610,14 @@ def apply_insertions(
         inserts.append((decision.candidate.heading_line + 1, snippet))
 
     if dry_run or not inserts:
-        return (0, linked)
+        return linked
 
     for line_number, snippet in sorted(inserts, key=lambda item: item[0], reverse=True):
         lines[line_number:line_number] = [line + newline for line in snippet]
 
     with note_path.open("w", encoding="utf-8", newline="") as note:
         note.write("".join(lines))
-    return (0, linked)
+    return linked
 
 
 def revert_note(note_path: Path, dry_run: bool) -> int:
@@ -748,7 +744,7 @@ def process_note(
         decisions = score_slides(candidates, slides, aliases, generic_headings)
         decisions = filter_decisions(decisions, min_score=min_score, generic_headings=generic_headings)
         created = materialize_images(note_path, decisions, document, dry_run, subject_label, asset_dir)
-        _, linked = apply_insertions(note_path, decisions, dry_run, subject_label, asset_dir)
+        linked = apply_insertions(note_path, decisions, dry_run, subject_label, asset_dir)
         return (created, linked)
     finally:
         document.close()
@@ -809,9 +805,9 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     notes = resolve_notes(args.note, args.notes_dir)
     if not notes:
@@ -842,9 +838,9 @@ def main() -> int:
         with open(args.headings_config, "r", encoding="utf-8") as f:
             config = json.load(f)
             if "skip" in config:
-                skip_headings = set(config["skip"])
+                skip_headings = {normalize_text(heading) for heading in config["skip"]}
             if "generic" in config:
-                generic_headings = set(config["generic"])
+                generic_headings = {normalize_text(heading) for heading in config["generic"]}
 
     total_created = 0
     total_linked = 0
@@ -871,6 +867,10 @@ def main() -> int:
     link_label = "links_planned" if args.dry_run else "links_inserted"
     print(f"[done] mode={mode} notes={len(notes)} {image_label}={total_created} {link_label}={total_linked}")
     return 0
+
+
+def revert_main() -> int:
+    return main(["--revert", *sys.argv[1:]])
 
 
 if __name__ == "__main__":

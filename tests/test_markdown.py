@@ -87,7 +87,7 @@ def test_insert_and_undo_preserve_code_examples(tmp_path):
     slide = core.SlideFeatures(1, "Actual heading", "actual heading", "Actual heading", 1, 0, 0.1, 0.8, True)
     score = core.SlideScore(slide, 0.9, 0.9, 1.0, 0.0, 0.1)
     decisions = [core.MatchDecision(candidate, (score,), False) for candidate in candidates]
-    assert core.apply_insertions(note, decisions, False, "Lecture", tmp_path / "images") == (0, 1)
+    assert core.apply_insertions(note, decisions, False, "Lecture", tmp_path / "images") == 1
     assert note.read_text().startswith(example)
     assert core.revert_note(note, False) == 1
     assert note.read_text() == original

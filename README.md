@@ -50,7 +50,7 @@ For "build" sequences, where successive slides add content, SlideLink favors the
 
 Headings, text, and image links inside fenced code blocks or YAML frontmatter do not affect matching. Both backtick and tilde fences are supported, including longer fences around Markdown examples.
 
-## Why use this?
+## Use cases
 
 | Field | Example |
 |---|---|
@@ -95,12 +95,14 @@ Image links are relative to each note, including when you choose a custom folder
 To remove SlideLink's inserted image links and review comments:
 
 ```bash
-slidelink-revert --revert
+slidelink-revert
 ```
+
+`slidelink-revert` is the same as `slidelink-run --revert` and takes the same options.
 
 Hidden `slidelink:start` / `slidelink:end` comments identify new insertions. Undo also recognizes older links in `screenshots/` with SlideLink's numbered `*_PgNNN_*.png` filenames.
 
-Other images, Obsidian embeds, code fences, and frontmatter stay intact. Exported PNG files stay on disk. Use `--dry-run --revert` to preview which notes would change.
+Other images, Obsidian embeds, code fences, and frontmatter stay intact. Exported PNG files stay on disk. Use `slidelink-revert --dry-run` to preview which notes would change.
 
 ## CLI reference
 
@@ -115,13 +117,13 @@ Other images, Obsidian embeds, code fences, and frontmatter stay intact. Exporte
 | `--aliases-file` | None | JSON file mapping LaTeX commands to plain-text aliases. |
 | `--headings-config` | None | JSON file with `skip` and `generic` heading lists. |
 | `--dry-run` | `False` | Preview changes without touching any files. |
-| `--revert` | `False` | Remove SlideLink's image links and review comments from notes. |
+| `--revert` | `False` | Remove SlideLink's image links and review comments from notes (same as `slidelink-revert`). |
 
 ## Customization
 
 ### LaTeX aliases
 
-Map LaTeX commands to words that may appear in the slides:
+Map LaTeX commands to words that may appear in the slides. An alias counts only as a whole word or phrase in the slide text, so `mu` matches "mu" but not "multi". Symbols such as `∇` never match, because slide text is reduced to letters and digits before comparison.
 
 ```json
 {
@@ -136,7 +138,7 @@ slidelink-run --aliases-file examples/aliases_stem.json
 
 ### Heading config
 
-Choose headings to skip or require a higher match score:
+Choose headings to skip or require a higher match score. Matching ignores case and punctuation:
 
 ```json
 {

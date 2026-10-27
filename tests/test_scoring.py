@@ -56,6 +56,17 @@ def test_complete_title_overlap_skips_fuzzy_matching(candidate, title):
         assert core.title_similarity(candidate, slide(1, title)) == 1.0
 
 
+def test_math_aliases_match_whole_words_only():
+    aliases = {"\\mu": {"mu", "μ"}, "\\mathcal{L}": {"loss", "l"}}
+    expanded = core.expand_math_aliases(("\\mu", "\\mathcal{L}"), aliases)
+    assert expanded == {"mu", "loss", "l", "mathcal"}
+    term = core.SectionCandidate(Path("01_notes.md"), 0, 3, "Mean", (), ("mean",), "mean", ("\\mu",), "Mean")
+    inside_words = core.score_slides([term], [slide(1, "multi layer perceptron")], aliases, set())[0]
+    whole_word = core.score_slides([term], [slide(1, "mu is the mean")], aliases, set())[0]
+    assert inside_words.matches[0].math_bonus == 0.0
+    assert whole_word.matches[0].math_bonus > 0.0
+
+
 def test_partial_title_overlap_still_uses_fuzzy_matching(candidate):
     with patch.object(core, "SequenceMatcher", wraps=core.SequenceMatcher) as compare:
         score = core.title_similarity(candidate, slide(1, "Neural Network Models"))

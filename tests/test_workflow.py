@@ -93,6 +93,29 @@ def test_score_slides_accepts_empty_inputs(decision):
     assert core.score_slides([], [decision.matches[0].slide], {}, set()) == []
 
 
+def test_slidelink_revert_command_reverts_without_flag(decision, tmp_path, monkeypatch):
+    note = decision.candidate.note_path
+    original = note.read_text()
+    core.apply_insertions(note, [decision], False, "Lecture", tmp_path / "assets")
+    assert note.read_text() != original
+    monkeypatch.setattr(core, "fitz", None)
+    monkeypatch.setattr("sys.argv", ["slidelink-revert", "--note", str(note)])
+    assert core.revert_main() == 0
+    assert note.read_text() == original
+
+
+def test_headings_config_entries_are_normalized(tmp_path, monkeypatch, capsys):
+    note = tmp_path / "01_intro.md"
+    note.write_text("## Introduction\n\nThis intro has plenty of words to count as a section.\n")
+    (tmp_path / "01_intro.pdf").write_bytes(b"")
+    config = tmp_path / "headings.json"
+    config.write_text('{"skip": ["Introduction"]}')
+    monkeypatch.setattr(core, "extract_slide_features", lambda path: (_ for _ in ()).throw(AssertionError("scored a skipped section")))
+    monkeypatch.setattr("sys.argv", ["slidelink-run", "--note", str(note), "--headings-config", str(config)])
+    assert core.main() == 0
+    assert "No candidate sections" in capsys.readouterr().out
+
+
 def test_revert_does_not_require_pdf_dependencies(tmp_path, monkeypatch):
     note = tmp_path / "note.md"
     note.write_text("Keep my notes.\n")
